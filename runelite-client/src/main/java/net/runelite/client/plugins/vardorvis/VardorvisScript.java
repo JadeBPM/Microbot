@@ -12,6 +12,7 @@ import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -23,8 +24,12 @@ import net.runelite.client.plugins.vardorvis.enums.StateBank;
 import net.runelite.client.plugins.vardorvis.enums.StatePOH;
 
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+
+import static net.runelite.client.plugins.microbot.util.misc.Rs2Food.getIds;
 
 public class VardorvisScript extends Script {
 
@@ -87,14 +92,18 @@ public class VardorvisScript extends Script {
 
                 switch (state) {
                     case UNKNOWN:
-                        //Microbot.log("Current state Unknown D:");
+                        Microbot.log("Current state Unknown D:");
 
                         break;
                     case POH:
+                        Microbot.log("Current state POH");
+
                         doingPOHThings();
 
                         break;
                     case BANK:
+                        Microbot.log("Current state Bankin");
+
                         doingBankThings();
 
                         break;
@@ -164,7 +173,7 @@ public class VardorvisScript extends Script {
                         );
                         if (Rs2GroundItem.lootItemsBasedOnNames(itemLootParams)) {
                             Microbot.log("Picking up items");
-                            sleep(5_000);
+                            sleep(Rs2Random.between(2500,6000));
 
                             Microbot.log("Slept for 10 seconds now leaving");
 
@@ -191,7 +200,6 @@ public class VardorvisScript extends Script {
     }
 
     public void doingPOHThings() {
-        //TODO(): Make sure we only use my altar for restore and then use the edgeville TP on the glory
         int maxPrayer = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
         int maxHealth = Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS);
 
@@ -201,13 +209,11 @@ public class VardorvisScript extends Script {
         Microbot.log("Health = " + health + " Max health = " + maxHealth);
         Microbot.log("Prayer = " + prayer + " Max prayer = " + maxPrayer);
 
-        if (health != maxHealth || prayer != maxPrayer) {
+        if (prayer != maxPrayer) {
             POHState = StatePOH.REJUVENATION;
         } else {
             POHState = StatePOH.GRAND_EXCHANGE;
         }
-
-        Rs2Inventory.count();
 
         switch (POHState) {
             case REJUVENATION:
@@ -215,7 +221,7 @@ public class VardorvisScript extends Script {
                 if (!Rs2Player.isWalking()) {
                     Microbot.log("Current state POH Rejuvenation");
 
-                    Rs2GameObject.interact(29241, "Drink");
+                    Rs2GameObject.interact(13179);
                 }
 
                 break;
@@ -224,7 +230,7 @@ public class VardorvisScript extends Script {
                 if (!Rs2Player.isWalking()) {
                     Microbot.log("Current state POH Grand Exchange");
 
-                    Rs2GameObject.interact(29156, "Grand Exchange");
+                    Rs2GameObject.interact(13523);
                 }
 
                 break;
@@ -232,6 +238,10 @@ public class VardorvisScript extends Script {
     }
 
     public void doingBankThings() {
+        int decentBreak = 6;
+        int shortbreak = 3;
+
+
         boolean isBankOpen = Rs2Bank.isOpen();
         // TODO(): Setup inventory profile for boss and eat sharks till full hp
         if (!Rs2Inventory.isFull() && isBankOpen || !Rs2Inventory.hasItemAmount("Shark", 11) && isBankOpen) {
@@ -247,14 +257,26 @@ public class VardorvisScript extends Script {
 
         switch (bankState) {
             case OPEN_BANK:
+                int shouldBankBreak = Rs2Random.between(0,7);
+                if(shouldBankBreak == decentBreak) {
+                    Microbot.log("decent break fam");
+                    sleep(Rs2Random.between(14360,29321));
+                } else if (shortbreak == shouldBankBreak) {
+                    Microbot.log("short break fam");
+                    sleep(Rs2Random.between(6212,9128));
+                }
                 Microbot.log("Current state BANK OPEN_BANK");
                 Rs2Bank.openBank();
                 break;
             case GET_ITEMS:
                 Microbot.log("Current state BANK GET_ITEMS");
+                int[] relevantIds = {28327, 385, 3144};
+                Rs2Bank.depositAll((item)-> Arrays.stream(relevantIds)
+                        .anyMatch(id -> id == item.getId()));
+                //TODO() Update the relevantIds as I don't want to bank a few other items
+                sleep(Rs2Random.between(1000, 2000));
 
-                Rs2Bank.depositAll();
-
+                //TODO() Update how we withdraw items (Look into Inventory setups
                 Rs2Bank.withdrawItem("Super combat potion(4)");
 
                 Rs2Bank.withdrawItem("Prayer potion(4)");
@@ -270,8 +292,10 @@ public class VardorvisScript extends Script {
                 Rs2Bank.withdrawItem("Teleport to house");
 
                 Rs2Bank.closeBank();
+                //TODO() Eat to full after closing the shop
 
                 break;
+
             case MOVE_ITEMS:
                 Microbot.log("Current state BANK MOVE_ITEMS");
 
@@ -308,7 +332,9 @@ public class VardorvisScript extends Script {
     }
 
     public void walkingToBoss() {
-        Rs2Camera.setZoom(200);
+        //TODO() Make sure script is using random tiles for movement
+
+        Rs2Camera.setZoom(Rs2Random.between(188,199));
 
         Rs2GameObject.interact(48745, "Enter");
 
